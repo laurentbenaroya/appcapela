@@ -1,0 +1,4 @@
+wx
+soundfile
+numpy
+resampy

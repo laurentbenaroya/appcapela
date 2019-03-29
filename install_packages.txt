@@ -1,0 +1,7 @@
+1) conda install -c newville wxpython-phoenix
+
+2) pip install resampy
+or
+conda install -c conda-forge resampy
+
+3) pip install soundfile
