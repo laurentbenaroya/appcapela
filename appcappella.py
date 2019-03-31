@@ -319,7 +319,7 @@ class Frame(wx.Frame):
         ind_w = range(self.Kspeech)  # update speech only
         w_all, h_all, v_all, _ = BetanmfSparse(spec, W=w_all, indW=ind_w, Beta=self.Beta,
                                                nbIter=nb_iter, noiseFloor=noise_floor,
-                                               sparseType='None', LRupdate=True)
+                                               sparseType='None', LRupdate=False)
 
         # TODO : play with sparseType
 
