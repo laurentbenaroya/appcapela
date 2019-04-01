@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-GUI implementation of NMF applied to Acappella denoising.
+GUI implementation of NMF applied to Acapela denoising.
 """
 
 # Author : Elie Laurent Benaroya
 # laurent.benaroya@gmail.com
 # 3/2019
+# last update : 4/2019
 
 # license : GNU GPL v3
 
@@ -18,6 +19,7 @@ import numpy as np
 
 from STFT import Stft, Istft
 from nmf.snmf import BetanmfSparse
+from nmf.pgnmf import *
 
 
 MAIN_WINDOW_DEFAULT_SIZE = (600, 280)
@@ -69,10 +71,6 @@ class Frame(wx.Frame):
         style = wx.MAXIMIZE_BOX | wx.RESIZE_BORDER | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX
         wx.Frame.__init__(self, parent, id, title=title, style=style, size=MAIN_WINDOW_DEFAULT_SIZE)
         self.Center()
-
-        # (longueur, hauteur)
-        # self.panel = wx.Panel(self)
-        # self.panel.SetBackgroundColour("gray")
 
         # training
 
@@ -132,6 +130,10 @@ class Frame(wx.Frame):
         self.Beta = 1.  # Kullback-Leibler divergence
 
         self.wlen_millisec = 50  # in milliseconds
+
+        self.nb_iter = 500
+        self.use_mu_nmf = True  # uses multiplicative update rules if True
+        # uses projected gradient otherwise.
 
     def OnExit(self, event):
         self.Destroy()
@@ -200,7 +202,7 @@ class Frame(wx.Frame):
         # ########@
         # parameters
         # ########@
-        nb_iter = 500  # number of nmf iterations
+        # nb_iter = 500  # number of nmf iterations
         noise_floor = 1e-10  # small constant in IS nmf
         small_const_add_spec = 1e-10  # add this small constant to input spectrogram
         # to avoid numerical problems if spec == 0
@@ -241,8 +243,14 @@ class Frame(wx.Frame):
 
         print('running an input matrix of size {}'.format(spec.shape))
 
-        w_music, _, _, _ = BetanmfSparse(spec, W=self.Ksic, Beta=self.Beta, nbIter=nb_iter,
-                                         noiseFloor=noise_floor, sparseType='None', LRupdate=False)
+        if self.use_mu_nmf:
+            w_music, _, _, _ = BetanmfSparse(spec, W=self.Ksic, Beta=self.Beta,
+                                             nbIter=self.nb_iter,noiseFloor=noise_floor,
+                                             sparseType='None', LRupdate=False)
+        else:
+            w_music, _, _, _, _ = projgradnmf(spec, W=self.Ksic, Beta=self.Beta,
+                                              nbIter=self.nb_iter, noiseFloor=noise_floor,
+                                              use_alpha_stable=False, Alpha=1.6, sigma_alpha=1e-1)
 
         self.model_file = os.path.join(self.outputDir, self.model_filename)
         np.save(self.model_file, w_music)
@@ -257,7 +265,7 @@ class Frame(wx.Frame):
         # ########@# #
         # parameters #
         # ########@ ##
-        nb_iter = 500  # number of nmf iterations
+        # nb_iter = 500  # number of nmf iterations
         noise_floor = 1e-10  # small constant in IS nmf
         small_const_add_spec = 1e-10  # add this small constant to input spectrogram
         # to avoid numerical problems if spec == 0
@@ -317,10 +325,18 @@ class Frame(wx.Frame):
         w_all_init = np.hstack((w_speech, w_music))
         w_all = np.copy(w_all_init)
         ind_w = range(self.Kspeech)  # update speech only
-        w_all, h_all, v_all, _ = BetanmfSparse(spec, W=w_all, indW=ind_w, Beta=self.Beta,
-                                               nbIter=nb_iter, noiseFloor=noise_floor,
-                                               sparseType='None', LRupdate=False)
 
+        if self.use_mu_nmf:
+            w_all, h_all, v_all, _ = BetanmfSparse(spec, W=w_all, indW=ind_w,
+                                                   Beta=self.Beta, nbIter=self.nb_iter,
+                                                   noiseFloor=noise_floor,
+                                                   sparseType='None', LRupdate=False)
+        else:
+            w_all, h_all, v_all, _, _ = projgradnmf(spec, W=w_all, indW=ind_w,
+                                                    Beta=self.Beta, nbIter=self.nb_iter,
+                                                    noiseFloor=noise_floor,
+                                                    use_alpha_stable=False, Alpha=1.6,
+                                                    sigma_alpha=1e-1)
         # TODO : play with sparseType
 
         # 5) Wiener filtering
@@ -345,7 +361,7 @@ class Frame(wx.Frame):
 
 if __name__ == "__main__":
     app = wx.App()
-    c_frame = Frame(None, -1, 'acappella')
+    c_frame = Frame(None, -1, 'acapela')
     c_frame.Show(True)
 
     app.MainLoop()
