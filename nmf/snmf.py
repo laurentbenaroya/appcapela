@@ -189,8 +189,8 @@ def BetanmfSparse(X, W=1, indW=None, H=None, Beta=0., nbIter=100, noiseFloor=0.,
                                     - Beta*X*np.power(V, Beta-1))
 
         Cost[it] = np.sum(C)+distValue
-        if it % 5 == 0:
-            print('%s It %d, cost : %.2f' % (next(spinner), it, Cost[it]), end="\r")
+        if (it+1) % 5 == 0:
+            print('%s It %d, cost : %.2f' % (next(spinner), it+1, Cost[it]), end="\r")
         
     print("")
     return W, H, V, Cost
